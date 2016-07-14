@@ -10,15 +10,30 @@
 (defn create-ants []
   (for [i (range 0 ant-count)]
     {:x (rand-int width)
-     :y (rand-int height)}))
+     :y (rand-int height)
+     :color javafx.scene.paint.Color/BLACK}))
 
 ;; side effects (global var, saving to disk, etc) indicated with bang
 (defn draw-ants! [context]
   (.clearRect context 0 0 width height)
   (doseq [ant @ants]
-    (.setFill context javafx.scene.paint.Color/BLACK)
+    (.setFill context (:color ant))
     (.fillOval context (:x ant) (:y ant) 5 5)))
 
+(defn aggravate-ant [ant]
+  (Thread/sleep 1)
+  (let [aggro-ants 
+        (filter (fn [a]
+                  (and (< (Math/abs (- (:x ant) (:x a))) 20)
+                       (< (Math/abs (- (:y ant) (:y a))) 20)))
+          @ants)
+        aggro-ant-count (count aggro-ants)]
+    (assoc ant
+      :color
+      (if (> aggro-ant-count 1)
+        javafx.scene.paint.Color/RED
+        javafx.scene.paint.Color/BLACK))))
+        
 ;; -> "threading": x-change and y-change do the same
 (defn move-ant [ant]
   (Thread/sleep 1)
@@ -29,7 +44,7 @@
       :y (+ (:y ant) y-change))))
 
 (defn move-ants []
-  (pmap move-ant @ants)) ;; parallel map 
+  (doall (pmap aggravate-ant (pmap move-ant @ants)))) ;; parallel map 
 
 (def last-timestamp (atom 0))
 
